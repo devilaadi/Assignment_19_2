@@ -1,0 +1,55 @@
+
+val rdd = sc.textFile("file:///home/cloudera/Desktop/Acadgild/Assignment_19/Sports_data.txt")
+
+val text = rdd.map(lines => lines.split(",")).map(arrays => (arrays(0),arrays(1),arrays(2),arrays(3),arrays(4),arrays(5),arrays(6))).toDF("firstname","lastname","sports","medal_type","age","year","country")
+
+text.registerTempTable("sports_data")
+
+
+--Using udfs on dataframe
+
+--1. Change firstname, lastname columns into Mr.first_two_letters_of_firstname<space>lastname for example - michael, phelps becomes Mr.mi phelps
+
+def flName =(fName :String,lName:String) => {
+      val changeName = "Mr."+fName+" "+lName
+      changeName
+      }
+
+//Register function
+sqlContext.udf.register("concatFLName",flName)
+
+val test = sqlContext.sql("Select concatFLName(firstname,lastname) as name from sports_data").show
+
+--2. Add a new column called ranking using udfs on dataframe, where :
+gold medalist, with age >= 32 are ranked as pro
+gold medalists, with age <= 31 are ranked amateur
+silver medalist, with age >= 32 are ranked as expert
+silver medalists, with age <= 31 are ranked rookie
+
+
+def ranking = (medal_type:String,age:Int)=> {
+
+var rank = ""
+   
+   if(medal_type=="gold" && age>=32)
+   rank = "pro"
+  
+   if(medal_type=="gold" && age<=31)
+   rank = "amateur"
+
+   if(medal_type=="silver" && age>=32)
+   rank = "expert"
+
+   if(medal_type=="silver" && age<=32)
+   rank = "rookie"
+
+rank
+
+}
+
+sqlContext.udf.register("rank",ranking)
+
+
+sqlContext.sql("Select firstname,lastname, medal_type,age,rank(medal_type,age) as ranking from sports_data ").show
+
+
